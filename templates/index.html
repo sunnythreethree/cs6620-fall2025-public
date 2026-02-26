@@ -163,6 +163,16 @@
 </head>
 <body>
     <div class="container">
+        {% if proof %}
+<div style="border:2px solid #1f6feb; padding:12px; margin-bottom:20px; background:#eef6ff;">
+    <h2>{{ proof.message }}</h2>
+    <p><strong>Version:</strong> {{ proof.version }}</p>
+    <p><strong>Deployed via:</strong> {{ proof.deployed_via }}</p>
+    <p><strong>Build ID:</strong> {{ proof.build_id }}</p>
+    <p><strong>Build Time:</strong> {{ proof.build_time }}</p>
+    <p><strong>Assignment:</strong> {{ proof.assignment }}</p>
+</div>
+{% endif %}
         <h1>Python Network Audio Player</h1>
 
         <div class="section-box log-upload-section">
