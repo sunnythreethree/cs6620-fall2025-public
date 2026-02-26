@@ -56,22 +56,49 @@ jobs:
       - name: Deploy using SSM Run Command
         run: |
           IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/cs6620-app:latest"
+          SHA="${{ github.sha }}"
 
-          aws ssm send-command \
+          COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "Install Docker (if needed) and deploy container via GitHub Actions + AWS SSM" \
             --parameters commands="[
-              \"sudo yum install -y docker\",
-              \"sudo systemctl start docker\",
-              \"sudo systemctl enable docker\",
+              \"set -e\",
+              \"echo '=== Who am I ==='\",
+              \"whoami\",
+              \"echo '=== Check Docker ==='\",
+              \"if ! command -v docker >/dev/null 2>&1; then \",
+              \"  echo 'Docker not found. Installing...'; \",
+              \"  if command -v yum >/dev/null 2>&1; then \",
+              \"    sudo yum update -y || true; \",
+              \"    sudo yum install -y docker; \",
+              \"  elif command -v apt-get >/dev/null 2>&1; then \",
+              \"    sudo apt-get update -y; \",
+              \"    sudo apt-get install -y docker.io; \",
+              \"  else \",
+              \"    echo 'No supported package manager (yum/apt-get).'; exit 1; \",
+              \"  fi; \",
+              \"fi\",
+              \"echo '=== Start Docker service ==='\",
+              \"sudo systemctl start docker || true\",
+              \"sudo systemctl enable docker || true\",
+              \"sudo docker --version\",
+              \"echo '=== Pull image ==='\",
               \"sudo docker pull ${IMAGE}\",
+              \"echo '=== Stop old container (if any) ==='\",
               \"sudo docker stop cs6620-app || true\",
               \"sudo docker rm cs6620-app || true\",
-              \"sudo docker run -d -p 80:5000 --restart unless-stopped --name cs6620-app ${IMAGE}\",
-              \"sudo docker ps --format '{{.Names}}\\t{{.Status}}\\t{{.CreatedAt}}'\"
+              \"echo '=== Run new container ==='\",
+              \"sudo docker run -d -p 80:5000 --restart unless-stopped --name cs6620-app -e GITHUB_SHA=${SHA} ${IMAGE}\",
+              \"echo '=== Running containers ==='\",
+              \"sudo docker ps --format '{{.Names}}\\t{{.Status}}\\t{{.CreatedAt}}'\",
+              \"echo '=== Image labels (proof) ==='\",
+              \"sudo docker image inspect ${IMAGE} --format='{{json .Config.Labels}}' | python3 -m json.tool || true\"
             ]" \
-            --output text
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command ID: ${COMMAND_ID}"
 
       - name: Print deploy info
         run: |
