@@ -7,6 +7,7 @@ on:
 
 jobs:
   build:
+    name: Build and Push to Docker Hub
     runs-on: ubuntu-latest
 
     steps:
@@ -55,15 +56,23 @@ jobs:
       - name: Deploy using SSM Run Command
         run: |
           IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/cs6620-app:latest"
+
           aws ssm send-command \
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --comment "Deploy Docker container via GitHub Actions + AWS SSM" \
+            --comment "Install Docker (if needed) and deploy container via GitHub Actions + AWS SSM" \
             --parameters commands="[
-              \"docker pull ${IMAGE}\",
-              \"docker stop cs6620-app || true\",
-              \"docker rm cs6620-app || true\",
-              \"docker run -d -p 80:5000 --restart unless-stopped --name cs6620-app ${IMAGE}\",
-              \"docker ps --format '{{.Names}}\\t{{.Status}}\\t{{.CreatedAt}}'\"
+              \"sudo yum install -y docker\",
+              \"sudo systemctl start docker\",
+              \"sudo systemctl enable docker\",
+              \"sudo docker pull ${IMAGE}\",
+              \"sudo docker stop cs6620-app || true\",
+              \"sudo docker rm cs6620-app || true\",
+              \"sudo docker run -d -p 80:5000 --restart unless-stopped --name cs6620-app ${IMAGE}\",
+              \"sudo docker ps --format '{{.Names}}\\t{{.Status}}\\t{{.CreatedAt}}'\"
             ]" \
             --output text
+
+      - name: Print deploy info
+        run: |
+          echo "Deploy command submitted to SSM for instance ${{ secrets.EC2_INSTANCE_ID }} in region ${{ secrets.AWS_REGION }}"
