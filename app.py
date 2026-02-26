@@ -19,7 +19,7 @@ CORS(app)
 # ===============================
 APP_VERSION = "2.0"
 DEPLOYMENT_METHOD = "GitHub Actions + AWS SSM"
-BUILD_ID = (os.environ.get("GITHUB_SHA", "local") or "local")[:7]
+BUILD_ID = (os.environ.get("GITHUB_SHA") or os.environ.get("GITHUB_ACTIONS_SHA") or "local")[:7]
 BUILD_TIME = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # ===============================
